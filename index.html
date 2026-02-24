@@ -111,18 +111,22 @@ button{
   transform:translateX(-50%);
 }
 
-/* BURST */
+/* BURST (REALISTIC) */
 .burst{
-  position:absolute;
-  width:10px;
-  height:14px;
-  border-radius:50%;
-  animation:explode 600ms ease-out forwards;
+  position:fixed;
+  animation:explode 800ms cubic-bezier(.2,.8,.2,1) forwards;
+  will-change: transform, opacity;
 }
 
 @keyframes explode{
-  0%{transform:translate(0,0) scale(1);opacity:1}
-  100%{transform:translate(var(--x),var(--y)) scale(.4);opacity:0}
+  0%{
+    transform:translate(0,0) scale(1);
+    opacity:1;
+  }
+  100%{
+    transform:translate(var(--x),var(--y)) scale(.25) rotate(720deg);
+    opacity:0;
+  }
 }
 
 /* CONFETTI */
@@ -196,6 +200,7 @@ button{
 
 <div id="app" class="container"></div>
 
+<!-- AUDIO -->
 <audio id="bgMusic" loop>
   <source src="Backsound.mp3" type="audio/mpeg">
 </audio>
@@ -224,7 +229,7 @@ function showStartButton(){
 function startCountdown(){
   const music=document.getElementById("bgMusic");
   music.volume=0.6;
-  music.play();
+  music.play().catch(()=>{});
 
   let count=5;
   app.innerHTML=`
@@ -246,6 +251,10 @@ let current=1;
 const rainbow=["#ff4d4d","#ff8a3d","#ffd23f","#4cd964","#5ac8fa","#5856d6","#ff2d55"];
 
 function startGame(){
+  // pastikan musik tetap jalan setelah klik (mobile friendly)
+  const music=document.getElementById("bgMusic");
+  music.volume=0.6;
+  music.play().catch(()=>{});
   renderBalloon();
 }
 
@@ -266,35 +275,72 @@ function renderBalloon(){
 }
 
 function popBalloon(el){
-
+  // sound pop
   const pop=document.getElementById("popSound");
   pop.currentTime=0;
   pop.play().catch(()=>{});
 
+  // vibrate
   if(navigator.vibrate){
-    navigator.vibrate(80);
+    navigator.vibrate([50,30,50]);
   }
 
+  // center position
   const rect=el.getBoundingClientRect();
+  const centerX=rect.left + rect.width/2;
+  const centerY=rect.top + rect.height/2;
 
-  for(let i=0;i<20;i++){
-    const piece=document.createElement("div");
-    piece.className="burst";
-    piece.style.left=rect.left+rect.width/2+"px";
-    piece.style.top=rect.top+rect.height/2+"px";
-    piece.style.background=el.style.background;
-    piece.style.setProperty('--x',(Math.random()-0.5)*300+"px");
-    piece.style.setProperty('--y',(Math.random()-0.5)*300+"px");
-    document.body.appendChild(piece);
-    setTimeout(()=>piece.remove(),600);
-  }
+  // kempes dulu (lebih realistis)
+  el.style.transition="transform .15s ease, opacity .15s ease";
+  el.style.transform="scale(1.15)";
 
-  el.style.transform="scale(1.4)";
   setTimeout(()=>{
     el.style.transform="scale(0)";
     el.style.opacity="0";
+  },120);
+
+  // FLASH putih
+  const flash=document.createElement("div");
+  flash.style.position="fixed";
+  flash.style.left="0";
+  flash.style.top="0";
+  flash.style.width="100%";
+  flash.style.height="100%";
+  flash.style.background="white";
+  flash.style.opacity="0.35";
+  flash.style.pointerEvents="none";
+  flash.style.transition="opacity .3s";
+  document.body.appendChild(flash);
+
+  setTimeout(()=>{
+    flash.style.opacity="0";
+    setTimeout(()=>flash.remove(),300);
   },80);
 
+  // pecahan lebih banyak + acak natural
+  for(let i=0;i<38;i++){
+    const piece=document.createElement("div");
+    piece.className="burst";
+    piece.style.left=centerX+"px";
+    piece.style.top=centerY+"px";
+    piece.style.width=(6+Math.random()*8)+"px";
+    piece.style.height=(10+Math.random()*12)+"px";
+    piece.style.background=el.style.background;
+    piece.style.borderRadius=(Math.random()*6)+"px";
+
+    const angle=Math.random()*2*Math.PI;
+    const distance=160+Math.random()*170;
+    const x=Math.cos(angle)*distance+"px";
+    const y=Math.sin(angle)*distance+"px";
+
+    piece.style.setProperty('--x',x);
+    piece.style.setProperty('--y',y);
+
+    document.body.appendChild(piece);
+    setTimeout(()=>piece.remove(),900);
+  }
+
+  // next balloon
   setTimeout(()=>{
     current++;
     if(current>config.totalBalloons){
@@ -302,7 +348,7 @@ function popBalloon(el){
     }else{
       renderBalloon();
     }
-  },300);
+  },520);
 }
 
 function showBirthdayCard(){
@@ -322,7 +368,7 @@ function showBirthdayCard(){
     c.className="confetti";
     c.style.left=Math.random()*100+"vw";
     c.style.background=rainbow[Math.floor(Math.random()*rainbow.length)];
-    c.style.animationDuration=2+Math.random()*2+"s";
+    c.style.animationDuration=(2+Math.random()*2)+"s";
     document.body.appendChild(c);
     setTimeout(()=>c.remove(),4000);
   }
@@ -342,7 +388,6 @@ function showMessage(){
   `;
 
   const box=document.getElementById("msg");
-
   lines.forEach(t=>{
     const div=document.createElement("div");
     div.textContent=t;
